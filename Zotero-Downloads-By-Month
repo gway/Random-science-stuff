@@ -1,0 +1,47 @@
+# Messing about #1 - December 2015
+# Document papers read + saved into Zotero by month for a given year
+# Maybe I'll update each year, or compare across years in the future
+
+rm(list=ls())  # Remove all variables from memory (clearmemory)
+setwd("~....") # set working directory
+
+library(ggplot2)
+library(zoo) # this is needed for function as.yearmon()
+
+# bring in the RAW library data file from the Zotero export
+# this 'My Library.csv' is the default file name that Zotero will generate on a library export
+d <- read.csv(file='My Library.csv', stringsAsFactors=FALSE) 
+
+# work with the messy excel date format... (might be a better way?)
+d <- transform(d, date = as.Date(Date.Added,format = '%Y-%m-%d')) # make a new column where date is simplified from messy 'Date.Added' default
+d <- transform(d, yrmo = as.Date(as.yearmon(date))) # intermediate step to prep a new "yrmo" column which will just report the 'Mon YEAR'
+d <- transform(d, yrmo = as.yearmon(yrmo)) # finishes process of saving 'yrmo' as 'Mon YEAR' only
+
+# use the format() method for objects of class "yearmon"; make new columns for just Month and Year
+d <- transform(d, month = format(yrmo, "%b"))  # this saves the 3 letter month code, "%B" saves the month number
+d <- transform(d, year = format(yrmo, "%Y"))   # this saves the 4 number year code, "%y" saves the 2 digit year  
+
+# isolate just the data I would find useful for playing around with in future
+d2 <- d[,c(2:5, 8:9, 88:91)] # drop out most of the fields of data from the Zotero default
+
+# subset just papers from a given year
+d3 <- subset(d2, d2$year==2015)
+
+# put the months in order
+d3 <- transform(d3, Mon = factor(d3$month, levels = c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")))   
+
+# tally the number of papers downloaded per month, save as a data frame, and calculate the mean across months for a later step
+countsPerMon <- as.data.frame(table(d3$Mon))
+MeanPapersPerMonth <- mean(countsPerMon$Freq)
+
+# make a plot
+quartz(height = 2.3, width = 3.4)
+plot <- ggplot(d3, aes(Mon)) +
+  geom_bar() +
+  scale_y_continuous("n papers saved") +
+  geom_hline(yintercept = MeanPapersPerMonth, color = "blue") +
+  annotate("text", min("Sep"), MeanPapersPerMonth+3, label="per month mean", color = "blue", size=3) + # label the value of the mean
+  theme_bw() + theme(panel.grid = element_blank())  +       # remove the white space around plot
+  theme(axis.text.x = element_text(angle=90, vjust=0.5)) 
+plot
+ggsave(plot, file="papers-read-by-month-2015.png", dpi=300) # save the plot in the wd
